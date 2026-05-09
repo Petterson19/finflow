@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FinFlow — Orçamento Pessoal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,500;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #181c27;
+    --surface2: #1e2334;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+    --text: #eef0f6;
+    --muted: #8b90a8;
+    --hint: #555c78;
+    --income: #3ecf8e;
+    --income-bg: rgba(62,207,142,0.1);
+    --expense: #f87171;
+    --expense-bg: rgba(248,113,113,0.1);
+    --accent: #7c6af7;
+    --accent-bg: rgba(124,106,247,0.12);
+    --warn: #f59e0b;
+    --warn-bg: rgba(245,158,11,0.1);
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 15px;
+  }
+
+  /* HEADER */
+  header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(15,17,23,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 60px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .logo {
+    font-family: 'Fraunces', serif;
+    font-size: 22px; font-weight: 500;
+    color: var(--text);
+    letter-spacing: -0.5px;
+  }
+  .logo span { color: var(--accent); font-style: italic; }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .notif-btn {
+    position: relative;
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 10px; width: 38px; height: 38px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: background 0.15s;
+    font-size: 18px;
+  }
+  .notif-btn:hover { background: var(--surface2); }
+  .notif-badge {
+    position: absolute; top: -4px; right: -4px;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--expense); color: #fff;
+    font-size: 10px; font-weight: 500;
+    display: flex; align-items: center; justify-content: center;
+    border: 2px solid var(--bg);
+    display: none;
+  }
+  .month-display {
+    font-size: 13px; color: var(--muted);
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 6px 12px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* LAYOUT */
+  .app { max-width: 1100px; margin: 0 auto; padding: 28px 20px 60px; }
+
+  /* BALANCE HERO */
+  .hero {
+    background: linear-gradient(135deg, var(--surface) 0%, var(--surface2) 100%);
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    padding: 32px 36px;
+    margin-bottom: 24px;
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute; top: -60px; right: -40px;
+    width: 200px; height: 200px;
+    background: var(--accent-bg);
+    border-radius: 50%; filter: blur(40px);
+    pointer-events: none;
+  }
+  .hero-label {
+    font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 8px;
+    font-family: 'DM Mono', monospace;
+  }
+  .hero-balance {
+    font-family: 'Fraunces', serif;
+    font-size: clamp(38px, 6vw, 56px);
+    font-weight: 300; letter-spacing: -2px;
+    color: var(--text); line-height: 1;
+    margin-bottom: 28px;
+  }
+  .hero-balance.positive { color: var(--income); }
+  .hero-balance.negative { color: var(--expense); }
+  .hero-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 400px; }
+  .hero-stat {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+  }
+  .hero-stat-label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--muted); margin-bottom: 4px;
+    font-family: 'DM Mono', monospace;
+  }
+  .hero-stat-value {
+    font-size: 20px; font-weight: 500;
+    font-family: 'DM Mono', monospace;
+  }
+  .hero-stat-value.income-val { color: var(--income); }
+  .hero-stat-value.expense-val { color: var(--expense); }
+
+  /* GRID */
+  .main-grid { display: grid; grid-template-columns: 1fr 380px; gap: 20px; }
+  @media(max-width: 820px) { .main-grid { grid-template-columns: 1fr; } }
+
+  /* PANELS */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .panel-header {
+    padding: 18px 20px 0;
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .panel-title {
+    font-size: 14px; font-weight: 500; color: var(--text);
+    letter-spacing: 0.2px;
+  }
+  .panel-badge {
+    font-size: 11px; font-family: 'DM Mono', monospace;
+    color: var(--muted); background: var(--surface2);
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 3px 8px;
+  }
+
+  /* FORM */
+  .form-body { padding: 0 20px 20px; }
+  .form-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .tab-btn {
+    flex: 1; padding: 9px; border-radius: var(--radius-sm);
+    font-size: 13px; font-weight: 500; cursor: pointer;
+    border: 1px solid var(--border2); background: transparent;
+    color: var(--muted); transition: all 0.15s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .tab-btn.active-income { background: var(--income-bg); color: var(--income); border-color: var(--income); }
+  .tab-btn.active-expense { background: var(--expense-bg); color: var(--expense); border-color: var(--expense); }
+  .tab-btn.active-bill { background: var(--warn-bg); color: var(--warn); border-color: var(--warn); }
+
+  .form-row { margin-bottom: 12px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; letter-spacing: 0.3px; }
+  input, select, textarea {
+    width: 100%; padding: 10px 14px;
+    background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: var(--radius-sm); color: var(--text);
+    font-size: 14px; font-family: 'DM Sans', sans-serif;
+    transition: border-color 0.15s; outline: none;
+    appearance: none;
+  }
+  input:focus, select:focus { border-color: var(--accent); }
+  input::placeholder { color: var(--hint); }
+  select option { background: var(--surface2); }
+  .form-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .submit-btn {
+    width: 100%; padding: 12px;
+    background: var(--accent); color: #fff;
+    border: none; border-radius: var(--radius-sm);
+    font-size: 14px; font-weight: 500; cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: opacity 0.15s, transform 0.1s;
+    margin-top: 4px;
+  }
+  .submit-btn:hover { opacity: 0.88; }
+  .submit-btn:active { transform: scale(0.98); }
+  .submit-btn.income-btn { background: var(--income); color: #0f1117; }
+  .submit-btn.expense-btn { background: var(--expense); }
+  .submit-btn.bill-btn { background: var(--warn); color: #0f1117; }
+
+  /* TRANSACTIONS */
+  .tx-list { padding: 0 20px 20px; }
+  .tx-filter { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .filter-chip {
+    font-size: 12px; padding: 5px 12px;
+    border-radius: 20px; border: 1px solid var(--border2);
+    background: transparent; color: var(--muted);
+    cursor: pointer; font-family: 'DM Sans', sans-serif;
+    transition: all 0.15s;
+  }
+  .filter-chip.active { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+  .filter-chip.chip-income.active { background: var(--income-bg); color: var(--income); border-color: var(--income); }
+  .filter-chip.chip-expense.active { background: var(--expense-bg); color: var(--expense); border-color: var(--expense); }
+
+  .tx-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--border);
+    animation: fadeIn 0.25s ease;
+  }
+  .tx-item:last-child { border-bottom: none; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+  .tx-icon {
+    width: 38px; height: 38px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0;
+  }
+  .tx-icon.income { background: var(--income-bg); }
+  .tx-icon.expense { background: var(--expense-bg); }
+  .tx-info { flex: 1; min-width: 0; }
+  .tx-name { font-size: 14px; font-weight: 400; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tx-meta { font-size: 11px; color: var(--muted); margin-top: 2px; font-family: 'DM Mono', monospace; }
+  .tx-amount { font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 500; flex-shrink: 0; }
+  .tx-amount.income { color: var(--income); }
+  .tx-amount.expense { color: var(--expense); }
+  .tx-delete {
+    width: 26px; height: 26px; border-radius: 6px;
+    background: transparent; border: none; cursor: pointer;
+    color: var(--hint); display: flex; align-items: center; justify-content: center;
+    font-size: 14px; transition: all 0.15s; flex-shrink: 0;
+  }
+  .tx-delete:hover { background: var(--expense-bg); color: var(--expense); }
+
+  .empty-state {
+    text-align: center; padding: 30px 0; color: var(--hint);
+    font-size: 13px;
+  }
+  .empty-state div { font-size: 28px; margin-bottom: 8px; }
+
+  /* BILLS PANEL */
+  .bills-list { padding: 0 20px 20px; }
+  .bill-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 0; border-bottom: 1px solid var(--border);
+    animation: fadeIn 0.25s ease;
+  }
+  .bill-item:last-child { border-bottom: none; }
+  .bill-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .bill-dot.urgent { background: var(--expense); box-shadow: 0 0 0 3px var(--expense-bg); }
+  .bill-dot.warn { background: var(--warn); box-shadow: 0 0 0 3px var(--warn-bg); }
+  .bill-dot.ok { background: var(--muted); }
+  .bill-info { flex: 1; min-width: 0; }
+  .bill-name { font-size: 13px; color: var(--text); }
+  .bill-due { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; margin-top: 2px; }
+  .bill-due.urgent { color: var(--expense); }
+  .bill-due.warn { color: var(--warn); }
+  .bill-right { text-align: right; flex-shrink: 0; }
+  .bill-amount { font-size: 13px; font-weight: 500; font-family: 'DM Mono', monospace; color: var(--text); }
+  .bill-tag {
+    font-size: 10px; padding: 2px 7px; border-radius: 4px;
+    margin-top: 3px; display: inline-block;
+    font-family: 'DM Mono', monospace;
+  }
+  .bill-tag.urgent { background: var(--expense-bg); color: var(--expense); }
+  .bill-tag.warn { background: var(--warn-bg); color: var(--warn); }
+  .bill-tag.ok { background: var(--surface2); color: var(--muted); }
+  .bill-delete {
+    width: 26px; height: 26px; border-radius: 6px;
+    background: transparent; border: none; cursor: pointer;
+    color: var(--hint); display: flex; align-items: center; justify-content: center;
+    font-size: 14px; transition: all 0.15s; flex-shrink: 0;
+  }
+  .bill-delete:hover { background: var(--expense-bg); color: var(--expense); }
+
+  /* NOTIFICATIONS MODAL */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7); z-index: 200;
+    align-items: flex-start; justify-content: flex-end;
+    padding: 70px 20px 20px;
+  }
+  .modal-overlay.open { display: flex; }
+  .notif-panel {
+    width: min(380px, 100%);
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 20px;
+    animation: slideDown 0.2s ease;
+    max-height: 70vh; overflow-y: auto;
+  }
+  @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
+  .notif-title { font-size: 15px; font-weight: 500; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .notif-item {
+    padding: 12px; border-radius: var(--radius-sm);
+    margin-bottom: 10px; border: 1px solid;
+  }
+  .notif-item.urgent { background: var(--expense-bg); border-color: rgba(248,113,113,0.25); }
+  .notif-item.warn { background: var(--warn-bg); border-color: rgba(245,158,11,0.25); }
+  .notif-item-title { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+  .notif-item.urgent .notif-item-title { color: var(--expense); }
+  .notif-item.warn .notif-item-title { color: var(--warn); }
+  .notif-item-body { font-size: 12px; color: var(--muted); line-height: 1.5; }
+  .no-notif { text-align: center; padding: 20px; color: var(--muted); font-size: 13px; }
+
+  /* CHART */
+  .chart-area { padding: 0 20px 20px; }
+  .chart-bars { display: flex; align-items: flex-end; gap: 6px; height: 80px; }
+  .chart-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .chart-bar { width: 100%; border-radius: 4px 4px 0 0; transition: height 0.4s ease; min-height: 3px; }
+  .chart-bar.income { background: var(--income); opacity: 0.8; }
+  .chart-bar.expense { background: var(--expense); opacity: 0.8; }
+  .chart-label { font-size: 10px; color: var(--hint); font-family: 'DM Mono', monospace; }
+  .chart-legend { display: flex; gap: 16px; margin-top: 10px; }
+  .legend-dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; margin-right: 6px; }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(60px);
+    background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: var(--radius-sm); padding: 12px 20px;
+    font-size: 13px; color: var(--text);
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    opacity: 0; z-index: 300; white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+  /* CATEGORY ICONS */
+  .cat-icon { font-size: 16px; }
+
+  /* RESPONSIVE */
+  @media(max-width: 600px) {
+    .app { padding: 16px 14px 60px; }
+    .hero { padding: 24px 20px; }
+    .form-grid2 { grid-template-columns: 1fr; }
+    header { padding: 0 16px; }
+    .hero-stats { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Fin<span>Flow</span></div>
+  <div class="header-right">
+    <div class="month-display" id="currentMonth"></div>
+    <div class="notif-btn" onclick="toggleNotifications()" title="Notificações">
+      🔔
+      <span class="notif-badge" id="notifBadge"></span>
+    </div>
+  </div>
+</header>
+
+<!-- Notifications Modal -->
+<div class="modal-overlay" id="notifModal" onclick="closeNotifOnOverlay(event)">
+  <div class="notif-panel">
+    <div class="notif-title">🔔 Notificações</div>
+    <div id="notifList"><div class="no-notif">Nenhuma notificação</div></div>
+  </div>
+</div>
+
+<div class="app">
+
+  <!-- BALANCE HERO -->
+  <div class="hero">
+    <div class="hero-label">Saldo atual</div>
+    <div class="hero-balance" id="heroBalance">R$ 0,00</div>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="hero-stat-label">↑ Receitas</div>
+        <div class="hero-stat-value income-val" id="heroIncome">R$ 0,00</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-label">↓ Despesas</div>
+        <div class="hero-stat-value expense-val" id="heroExpense">R$ 0,00</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main-grid">
+
+    <!-- LEFT COLUMN -->
+    <div style="display:flex;flex-direction:column;gap:20px;">
+
+      <!-- TRANSACTIONS PANEL -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Lançamentos</div>
+          <div class="tx-filter">
+            <button class="filter-chip active" data-filter="all" onclick="setFilter('all',this)">Todos</button>
+            <button class="filter-chip chip-income" data-filter="income" onclick="setFilter('income',this)">Receitas</button>
+            <button class="filter-chip chip-expense" data-filter="expense" onclick="setFilter('expense',this)">Despesas</button>
+          </div>
+        </div>
+        <div class="tx-list">
+          <div id="txList"><div class="empty-state"><div>💸</div>Nenhum lançamento ainda</div></div>
+        </div>
+      </div>
+
+      <!-- CHART PANEL -->
+      <div class="panel" id="chartPanel" style="display:none;">
+        <div class="panel-header">
+          <div class="panel-title">Visão por categoria</div>
+        </div>
+        <div class="chart-area">
+          <div class="chart-bars" id="chartBars"></div>
+          <div class="chart-legend" style="margin-top:14px;">
+            <span style="font-size:12px;color:var(--muted);display:flex;align-items:center;">
+              <span class="legend-dot" style="background:var(--income);"></span>Receita
+            </span>
+            <span style="font-size:12px;color:var(--muted);display:flex;align-items:center;">
+              <span class="legend-dot" style="background:var(--expense);"></span>Despesa
+            </span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div style="display:flex;flex-direction:column;gap:20px;">
+
+      <!-- ADD PANEL -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Novo lançamento</div>
+        </div>
+        <div class="form-body">
+          <div class="form-tabs">
+            <button class="tab-btn active-income" onclick="setTab('income',this)">+ Receita</button>
+            <button class="tab-btn" onclick="setTab('expense',this)">− Despesa</button>
+            <button class="tab-btn" onclick="setTab('bill',this)">📅 Conta</button>
+          </div>
+
+          <div class="form-row">
+            <label>Descrição</label>
+            <input type="text" id="fDesc" placeholder="Ex: Salário, Aluguel..." maxlength="50">
+          </div>
+          <div class="form-grid2">
+            <div class="form-row">
+              <label>Valor (R$)</label>
+              <input type="number" id="fAmount" placeholder="0,00" min="0" step="0.01">
+            </div>
+            <div class="form-row">
+              <label id="dateLabel">Data</label>
+              <input type="date" id="fDate">
+            </div>
+          </div>
+          <div class="form-row">
+            <label>Categoria</label>
+            <select id="fCategory">
+              <option value="salario">💼 Salário</option>
+              <option value="freelance">💻 Freelance</option>
+              <option value="investimento">📈 Investimento</option>
+              <option value="outro_r">✨ Outro</option>
+              <option value="moradia">🏠 Moradia</option>
+              <option value="alimentacao">🍽️ Alimentação</option>
+              <option value="transporte">🚗 Transporte</option>
+              <option value="saude">💊 Saúde</option>
+              <option value="lazer">🎮 Lazer</option>
+              <option value="educacao">📚 Educação</option>
+              <option value="outro_d">📦 Outro</option>
+            </select>
+          </div>
+          <div class="form-row" id="billRepeatRow" style="display:none;">
+            <label>Recorrência</label>
+            <select id="fRepeat">
+              <option value="once">Única vez</option>
+              <option value="monthly">Mensal</option>
+            </select>
+          </div>
+          <button class="submit-btn income-btn" id="submitBtn" onclick="addEntry()">Adicionar Receita</button>
+        </div>
+      </div>
+
+      <!-- BILLS PANEL -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Contas a pagar</div>
+          <span class="panel-badge" id="billCount">0 contas</span>
+        </div>
+        <div class="bills-list">
+          <div id="billList"><div class="empty-state"><div>📅</div>Nenhuma conta cadastrada</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+  let currentTab = 'income';
+  let activeFilter = 'all';
+  let transactions = JSON.parse(localStorage.getItem('ff_tx') || '[]');
+  let bills = JSON.parse(localStorage.getItem('ff_bills') || '[]');
+
+  const CATS = {
+    salario:'💼',freelance:'💻',investimento:'📈',outro_r:'✨',
+    moradia:'🏠',alimentacao:'🍽️',transporte:'🚗',saude:'💊',
+    lazer:'🎮',educacao:'📚',outro_d:'📦'
+  };
+
+  function fmt(n) {
+    return 'R$ ' + Math.abs(n).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  }
+
+  function fmtDate(d) {
+    if (!d) return '';
+    const [y,m,day] = d.split('-');
+    return `${day}/${m}/${y}`;
+  }
+
+  function todayStr() {
+    return new Date().toISOString().split('T')[0];
+  }
+
+  function save() {
+    localStorage.setItem('ff_tx', JSON.stringify(transactions));
+    localStorage.setItem('ff_bills', JSON.stringify(bills));
+  }
+
+  function setTab(tab, btn) {
+    currentTab = tab;
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      b.className = 'tab-btn';
+    });
+    if (tab === 'income') btn.className = 'tab-btn active-income';
+    else if (tab === 'expense') btn.className = 'tab-btn active-expense';
+    else btn.className = 'tab-btn active-bill';
+
+    const sb = document.getElementById('submitBtn');
+    const dl = document.getElementById('dateLabel');
+    const br = document.getElementById('billRepeatRow');
+    const cat = document.getElementById('fCategory');
+
+    if (tab === 'income') {
+      sb.className = 'submit-btn income-btn'; sb.textContent = 'Adicionar Receita';
+      dl.textContent = 'Data'; br.style.display = 'none';
+      cat.innerHTML = `<option value="salario">💼 Salário</option><option value="freelance">💻 Freelance</option><option value="investimento">📈 Investimento</option><option value="outro_r">✨ Outro</option>`;
+    } else if (tab === 'expense') {
+      sb.className = 'submit-btn expense-btn'; sb.textContent = 'Adicionar Despesa';
+      dl.textContent = 'Data'; br.style.display = 'none';
+      cat.innerHTML = `<option value="moradia">🏠 Moradia</option><option value="alimentacao">🍽️ Alimentação</option><option value="transporte">🚗 Transporte</option><option value="saude">💊 Saúde</option><option value="lazer">🎮 Lazer</option><option value="educacao">📚 Educação</option><option value="outro_d">📦 Outro</option>`;
+    } else {
+      sb.className = 'submit-btn bill-btn'; sb.textContent = 'Cadastrar Conta';
+      dl.textContent = 'Vencimento'; br.style.display = 'block';
+      cat.innerHTML = `<option value="moradia">🏠 Moradia</option><option value="alimentacao">🍽️ Alimentação</option><option value="transporte">🚗 Transporte</option><option value="saude">💊 Saúde</option><option value="lazer">🎮 Lazer</option><option value="educacao">📚 Educação</option><option value="outro_d">📦 Outro</option>`;
+    }
+  }
+
+  function addEntry() {
+    const desc = document.getElementById('fDesc').value.trim();
+    const amount = parseFloat(document.getElementById('fAmount').value);
+    const date = document.getElementById('fDate').value;
+    const cat = document.getElementById('fCategory').value;
+
+    if (!desc) { showToast('⚠️ Preencha a descrição'); return; }
+    if (!amount || amount <= 0) { showToast('⚠️ Valor inválido'); return; }
+    if (!date) { showToast('⚠️ Selecione uma data'); return; }
+
+    if (currentTab === 'bill') {
+      const repeat = document.getElementById('fRepeat').value;
+      bills.push({ id: Date.now(), desc, amount, dueDate: date, cat, repeat });
+      save(); renderBills(); renderNotifications();
+      showToast('✅ Conta cadastrada!');
+    } else {
+      transactions.unshift({ id: Date.now(), desc, amount, type: currentTab, date, cat });
+      save(); renderTx(); updateBalance();
+      showToast(currentTab === 'income' ? '✅ Receita adicionada!' : '✅ Despesa adicionada!');
+    }
+
+    document.getElementById('fDesc').value = '';
+    document.getElementById('fAmount').value = '';
+    document.getElementById('fDate').value = '';
+  }
+
+  function deleteTx(id) {
+    transactions = transactions.filter(t => t.id !== id);
+    save(); renderTx(); updateBalance();
+    showToast('🗑️ Lançamento removido');
+  }
+
+  function deleteBill(id) {
+    bills = bills.filter(b => b.id !== id);
+    save(); renderBills(); renderNotifications();
+    showToast('🗑️ Conta removida');
+  }
+
+  function setFilter(f, btn) {
+    activeFilter = f;
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    renderTx();
+  }
+
+  function renderTx() {
+    const list = document.getElementById('txList');
+    let filtered = activeFilter === 'all' ? transactions : transactions.filter(t => t.type === activeFilter);
+
+    if (!filtered.length) {
+      list.innerHTML = '<div class="empty-state"><div>💸</div>Nenhum lançamento</div>';
+      document.getElementById('chartPanel').style.display = 'none';
+      return;
+    }
+
+    document.getElementById('chartPanel').style.display = 'block';
+    list.innerHTML = filtered.map(t => `
+      <div class="tx-item">
+        <div class="tx-icon ${t.type}"><span class="cat-icon">${CATS[t.cat]||'📦'}</span></div>
+        <div class="tx-info">
+          <div class="tx-name">${t.desc}</div>
+          <div class="tx-meta">${fmtDate(t.date)}</div>
+        </div>
+        <div class="tx-amount ${t.type}">${t.type==='income'?'+':'-'} ${fmt(t.amount)}</div>
+        <button class="tx-delete" onclick="deleteTx(${t.id})" title="Remover">✕</button>
+      </div>
+    `).join('');
+
+    renderChart();
+  }
+
+  function renderChart() {
+    const bars = document.getElementById('chartBars');
+    const catTotals = {};
+    transactions.forEach(t => {
+      if (!catTotals[t.cat]) catTotals[t.cat] = { income: 0, expense: 0 };
+      catTotals[t.cat][t.type] = (catTotals[t.cat][t.type] || 0) + t.amount;
+    });
+    const cats = Object.keys(catTotals);
+    if (!cats.length) { bars.innerHTML = ''; return; }
+    const maxVal = Math.max(...cats.map(c => Math.max(catTotals[c].income||0, catTotals[c].expense||0)));
+    bars.innerHTML = cats.map(c => {
+      const iH = maxVal > 0 ? ((catTotals[c].income||0)/maxVal*70) : 0;
+      const eH = maxVal > 0 ? ((catTotals[c].expense||0)/maxVal*70) : 0;
+      return `<div class="chart-bar-wrap">
+        ${catTotals[c].income ? `<div class="chart-bar income" style="height:${iH}px;"></div>` : ''}
+        ${catTotals[c].expense ? `<div class="chart-bar expense" style="height:${eH}px;"></div>` : ''}
+        <div class="chart-label">${CATS[c]||'📦'}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function updateBalance() {
+    const income = transactions.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+    const expense = transactions.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    const balance = income - expense;
+
+    const hb = document.getElementById('heroBalance');
+    hb.textContent = (balance<0?'- ':'') + fmt(balance);
+    hb.className = 'hero-balance ' + (balance > 0 ? 'positive' : balance < 0 ? 'negative' : '');
+    document.getElementById('heroIncome').textContent = fmt(income);
+    document.getElementById('heroExpense').textContent = fmt(expense);
+  }
+
+  function getDaysUntil(dateStr) {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const due = new Date(dateStr + 'T00:00:00');
+    return Math.round((due - today) / 86400000);
+  }
+
+  function renderBills() {
+    const list = document.getElementById('billList');
+    document.getElementById('billCount').textContent = `${bills.length} conta${bills.length!==1?'s':''}`;
+
+    if (!bills.length) {
+      list.innerHTML = '<div class="empty-state"><div>📅</div>Nenhuma conta cadastrada</div>';
+      return;
+    }
+
+    const sorted = [...bills].sort((a,b) => a.dueDate.localeCompare(b.dueDate));
+    list.innerHTML = sorted.map(b => {
+      const days = getDaysUntil(b.dueDate);
+      let urgency = 'ok', dueLabel = `Vence em ${days} dias`;
+      if (days < 0) { urgency = 'urgent'; dueLabel = `Venceu há ${Math.abs(days)} dia${Math.abs(days)!==1?'s':''}`; }
+      else if (days === 0) { urgency = 'urgent'; dueLabel = 'Vence hoje!'; }
+      else if (days <= 7) { urgency = 'warn'; dueLabel = `Vence em ${days} dia${days!==1?'s':''}`; }
+
+      const tagText = days < 0 ? 'Vencida' : days === 0 ? 'Hoje' : days <= 7 ? 'Em breve' : fmtDate(b.dueDate);
+      return `<div class="bill-item">
+        <div class="bill-dot ${urgency}"></div>
+        <div class="bill-info">
+          <div class="bill-name">${CATS[b.cat]||'📦'} ${b.desc}</div>
+          <div class="bill-due ${urgency}">${dueLabel}</div>
+        </div>
+        <div class="bill-right">
+          <div class="bill-amount">${fmt(b.amount)}</div>
+          <span class="bill-tag ${urgency}">${tagText}</span>
+        </div>
+        <button class="bill-delete" onclick="deleteBill(${b.id})" title="Remover">✕</button>
+      </div>`;
+    }).join('');
+  }
+
+  function renderNotifications() {
+    const notifs = bills.filter(b => getDaysUntil(b.dueDate) <= 7);
+    const badge = document.getElementById('notifBadge');
+    badge.style.display = notifs.length ? 'flex' : 'none';
+    badge.textContent = notifs.length;
+
+    const nl = document.getElementById('notifList');
+    if (!notifs.length) {
+      nl.innerHTML = '<div class="no-notif">✅ Nenhuma notificação pendente</div>';
+      return;
+    }
+
+    const sorted = [...notifs].sort((a,b) => a.dueDate.localeCompare(b.dueDate));
+    nl.innerHTML = sorted.map(b => {
+      const days = getDaysUntil(b.dueDate);
+      const urgency = days <= 0 ? 'urgent' : 'warn';
+      let msg = '';
+      if (days < 0) msg = `Venceu há ${Math.abs(days)} dia${Math.abs(days)!==1?'s':''}. Regularize o quanto antes!`;
+      else if (days === 0) msg = `Vence hoje! Valor: ${fmt(b.amount)}.`;
+      else msg = `Vence em ${days} dia${days!==1?'s':''} — ${fmtDate(b.dueDate)}. Reserve ${fmt(b.amount)}.`;
+      return `<div class="notif-item ${urgency}">
+        <div class="notif-item-title">${CATS[b.cat]||'📦'} ${b.desc}</div>
+        <div class="notif-item-body">${msg}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function toggleNotifications() {
+    document.getElementById('notifModal').classList.toggle('open');
+  }
+
+  function closeNotifOnOverlay(e) {
+    if (e.target === document.getElementById('notifModal'))
+      document.getElementById('notifModal').classList.remove('open');
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  function initMonth() {
+    const months = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    const d = new Date();
+    document.getElementById('currentMonth').textContent = `${months[d.getMonth()]} ${d.getFullYear()}`;
+  }
+
+  // Set today as default date
+  document.getElementById('fDate').value = todayStr();
+
+  initMonth();
+  renderTx();
+  updateBalance();
+  renderBills();
+  renderNotifications();
+
+  // Check notifications every minute
+  setInterval(renderNotifications, 60000);
+</script>
+</body>
+</html>
