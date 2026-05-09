@@ -115,7 +115,8 @@
   }
   .hero-balance.positive { color: var(--income); }
   .hero-balance.negative { color: var(--expense); }
-  .hero-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 400px; }
+  .hero-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media(min-width: 700px) { .hero-stats { grid-template-columns: 1fr 1fr 1fr 1fr; } }
   .hero-stat {
     background: rgba(255,255,255,0.04);
     border: 1px solid var(--border);
@@ -392,6 +393,14 @@
         <div class="hero-stat-label">↓ Despesas</div>
         <div class="hero-stat-value expense-val" id="heroExpense">R$ 0,00</div>
       </div>
+      <div class="hero-stat">
+        <div class="hero-stat-label">📅 A pagar</div>
+        <div class="hero-stat-value" style="color:var(--warn);" id="heroBills">R$ 0,00</div>
+      </div>
+      <div class="hero-stat" style="border:1px solid rgba(124,106,247,0.3); background:rgba(124,106,247,0.07);">
+        <div class="hero-stat-label" style="color:var(--accent);">◎ Saldo projetado</div>
+        <div class="hero-stat-value" style="color:var(--accent);" id="heroProjected">R$ 0,00</div>
+      </div>
     </div>
   </div>
 
@@ -582,7 +591,7 @@
     if (currentTab === 'bill') {
       const repeat = document.getElementById('fRepeat').value;
       bills.push({ id: Date.now(), desc, amount, dueDate: date, cat, repeat });
-      save(); renderBills(); renderNotifications();
+      save(); renderBills(); renderNotifications(); updateBalance();
       showToast('✅ Conta cadastrada!');
     } else {
       transactions.unshift({ id: Date.now(), desc, amount, type: currentTab, date, cat });
@@ -603,7 +612,7 @@
 
   function deleteBill(id) {
     bills = bills.filter(b => b.id !== id);
-    save(); renderBills(); renderNotifications();
+    save(); renderBills(); renderNotifications(); updateBalance();
     showToast('🗑️ Conta removida');
   }
 
@@ -666,11 +675,19 @@
     const expense = transactions.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
     const balance = income - expense;
 
+    const pendingBills = bills.filter(b => getDaysUntil(b.dueDate) >= 0).reduce((s,b)=>s+b.amount,0);
+    const projected = balance - pendingBills;
+
     const hb = document.getElementById('heroBalance');
     hb.textContent = (balance<0?'- ':'') + fmt(balance);
     hb.className = 'hero-balance ' + (balance > 0 ? 'positive' : balance < 0 ? 'negative' : '');
     document.getElementById('heroIncome').textContent = fmt(income);
     document.getElementById('heroExpense').textContent = fmt(expense);
+    document.getElementById('heroBills').textContent = fmt(pendingBills);
+
+    const hp = document.getElementById('heroProjected');
+    hp.textContent = (projected<0?'- ':'') + fmt(projected);
+    hp.style.color = projected < 0 ? 'var(--expense)' : projected === 0 ? 'var(--muted)' : 'var(--accent)';
   }
 
   function getDaysUntil(dateStr) {
