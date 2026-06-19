@@ -560,11 +560,39 @@ function addEntry(){
   if(!desc){showToast('⚠️ Preencha a descrição');return;}
   if(!amount||amount<=0){showToast('⚠️ Valor inválido');return;}
   if(!date){showToast('⚠️ Selecione uma data');return;}
-  if(currentTab==='bill'){
-    bills.push({id:Date.now(),desc,amount,dueDate:date,cat,repeat:document.getElementById('fRepeat').value});
-    save();renderCalendar();renderNotif();updateBalance();
-    showToast('✅ Conta cadastrada!');
-  } else {
+  if (currentTab === 'bill') {
+    const repeat = document.getElementById('fRepeat').value;
+    const baseDate = new Date(date + 'T00:00:00');
+    
+    // Define quantos meses repetir (ex: 12 meses)
+    const iterations = (repeat === 'monthly') ? 12 : 1; 
+
+    for (let i = 0; i < iterations; i++) {
+        let nextDate = new Date(baseDate);
+        nextDate.setMonth(baseDate.getMonth() + i);
+        
+        // Formata a data de volta para YYYY-MM-DD
+        const y = nextDate.getFullYear();
+        const m = String(nextDate.getMonth() + 1).padStart(2, '0');
+        const d = String(nextDate.getDate()).padStart(2, '0');
+        const formattedDate = `${y}-${m}-${d}`;
+
+        bills.push({
+            id: Date.now() + i, // Garante IDs únicos
+            desc: desc + (iterations > 1 ? ` (${i + 1}/${iterations})` : ''),
+            amount: amount,
+            dueDate: formattedDate,
+            cat: cat,
+            repeat: repeat
+        });
+    }
+
+    save();
+    renderCalendar();
+    renderNotif();
+    updateBalance();
+    showToast('✅ Conta(s) cadastrada(s)!');
+} else {
     transactions.unshift({id:Date.now(),desc,amount,type:currentTab,date,cat});
     save();renderTx();updateBalance();renderCatFilters();
     showToast(currentTab==='income'?'✅ Receita adicionada!':'✅ Despesa adicionada!');
