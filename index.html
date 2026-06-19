@@ -4,108 +4,58 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FinFlow — Orçamento Pessoal</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,500;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
+/* Manter os seus estilos CSS aqui para preservar o design */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg:#0f1117;--surface:#181c27;--surface2:#1e2334;--surface3:#242840;
-  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
-  --text:#eef0f6;--muted:#8b90a8;--hint:#555c78;
-  --income:#3ecf8e;--income-bg:rgba(62,207,142,0.1);
-  --expense:#f87171;--expense-bg:rgba(248,113,113,0.1);
-  --accent:#7c6af7;--accent-bg:rgba(124,106,247,0.12);
-  --warn:#f59e0b;--warn-bg:rgba(245,158,11,0.1);
-  --r:14px;--rs:8px;
+:root{--bg:#0f1117;--surface:#181c27;--text:#eef0f6;--accent:#7c6af7;--income:#3ecf8e;--expense:#f87171;--warn:#f59e0b;--muted:#8b90a8;}
+body{font-family:sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+</style>
+</head>
+<body>
+<div class="app">
+    <div id="txList"></div>
+    </div>
+
+<script>
+// ── DATA COM TRATAMENTO DE ERROS ──────────────────────────────────────
+function safeLoad(key, fallback) {
+    try {
+        const item = localStorage.getItem(key);
+        return item ? JSON.parse(item) : fallback;
+    } catch (e) {
+        console.error("Erro ao carregar " + key + ", resetando dados.", e);
+        return fallback;
+    }
 }
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px}
 
-header{position:sticky;top:0;z-index:100;background:rgba(15,17,23,0.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between}
-.logo{font-family:'Fraunces',serif;font-size:22px;font-weight:500;letter-spacing:-0.5px}
-.logo span{color:var(--accent);font-style:italic}
-.header-right{display:flex;align-items:center;gap:10px}
-.icon-btn{position:relative;background:var(--surface);border:1px solid var(--border2);border-radius:10px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background 0.15s;font-size:17px}
-.icon-btn:hover{background:var(--surface2)}
-.notif-badge{position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:var(--expense);color:#fff;font-size:10px;font-weight:500;display:none;align-items:center;justify-content:center;border:2px solid var(--bg)}
-.month-tag{font-size:13px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);padding:6px 12px;font-family:'DM Mono',monospace}
+let transactions = safeLoad('ff_tx', []);
+let bills        = safeLoad('ff_bills', []);
+let customCats   = safeLoad('ff_cats', []);
 
-.app{max-width:1140px;margin:0 auto;padding:28px 20px 80px}
+// ... (Restante do seu script original) ...
 
-/* HERO */
-.hero{background:linear-gradient(135deg,var(--surface),var(--surface2));border:1px solid var(--border2);border-radius:20px;padding:32px 36px;margin-bottom:24px;position:relative;overflow:hidden}
-.hero::before{content:'';position:absolute;top:-60px;right:-40px;width:220px;height:220px;background:var(--accent-bg);border-radius:50%;filter:blur(50px);pointer-events:none}
-.hero-label{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;font-family:'DM Mono',monospace}
-.hero-balance{font-family:'Fraunces',serif;font-size:clamp(36px,6vw,54px);font-weight:300;letter-spacing:-2px;line-height:1;margin-bottom:28px}
-.hero-balance.pos{color:var(--income)}.hero-balance.neg{color:var(--expense)}
-.hero-stats{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-@media(min-width:680px){.hero-stats{grid-template-columns:repeat(4,1fr)}}
-.hero-stat{background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:var(--rs);padding:14px 16px}
-.hero-stat.projected{border-color:rgba(124,106,247,0.3);background:rgba(124,106,247,0.07)}
-.hsl{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:4px;font-family:'DM Mono',monospace}
-.hsv{font-size:19px;font-weight:500;font-family:'DM Mono',monospace}
-
-.main-grid{display:grid;grid-template-columns:1fr 390px;gap:20px}
-@media(max-width:840px){.main-grid{grid-template-columns:1fr}}
-
-/* PANEL */
-.panel{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);overflow:hidden}
-.panel-header{padding:18px 20px 0;display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
-.panel-title{font-size:14px;font-weight:500}
-.panel-badge{font-size:11px;font-family:'DM Mono',monospace;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:3px 8px}
-
-/* VIEW TOGGLE */
-.view-toggle{display:flex;gap:4px}
-.vtbtn{width:30px;height:30px;border-radius:6px;background:transparent;border:1px solid var(--border2);cursor:pointer;color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:15px;transition:all 0.15s}
-.vtbtn:hover{background:var(--surface2)}
-.vtbtn.active{background:var(--accent-bg);color:var(--accent);border-color:var(--accent)}
-
-/* FORM */
-.form-body{padding:0 20px 20px}
-.form-tabs{display:flex;gap:8px;margin-bottom:16px}
-.tab-btn{flex:1;padding:9px;border-radius:var(--rs);font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--border2);background:transparent;color:var(--muted);transition:all 0.15s;font-family:'DM Sans',sans-serif}
-.tab-btn.ti{background:var(--income-bg);color:var(--income);border-color:var(--income)}
-.tab-btn.te{background:var(--expense-bg);color:var(--expense);border-color:var(--expense)}
-.tab-btn.tb{background:var(--warn-bg);color:var(--warn);border-color:var(--warn)}
-.form-row{margin-bottom:12px}
-label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;letter-spacing:0.3px}
-input,select{width:100%;padding:10px 14px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--rs);color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;transition:border-color 0.15s;outline:none;appearance:none;-webkit-appearance:none}
-input:focus,select:focus{border-color:var(--accent)}
-input::placeholder{color:var(--hint)}
-select option{background:var(--surface2)}
-.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.submit-btn{width:100%;padding:12px;border:none;border-radius:var(--rs);font-size:14px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity 0.15s,transform 0.1s;margin-top:4px}
-.submit-btn:hover{opacity:.88}.submit-btn:active{transform:scale(.98)}
-.btn-i{background:var(--income);color:#0f1117}
-.btn-e{background:var(--expense);color:#fff}
-.btn-b{background:var(--warn);color:#0f1117}
-.btn-accent{background:var(--accent);color:#fff}
-
-/* CATEGORY MANAGER */
-.cat-manager-toggle{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--accent);cursor:pointer;background:none;border:none;font-family:'DM Sans',sans-serif;padding:0;margin-top:14px}
-.cat-manager-toggle:hover{opacity:.8}
-.cat-manager{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--rs);padding:14px;margin-top:12px;display:none}
-.cat-manager.open{display:block}
-.cat-list-manage{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;min-height:10px}
-.cat-pill{display:flex;align-items:center;gap:6px;background:var(--surface3);border:1px solid var(--border2);border-radius:20px;padding:5px 10px;font-size:12px}
-.cat-pill-del{background:none;border:none;color:var(--hint);cursor:pointer;font-size:12px;line-height:1;padding:0 2px}
-.cat-pill-del:hover{color:var(--expense)}
-.cat-add-row{display:flex;gap:8px}
-.cat-emoji-input{flex:0 0 52px!important;text-align:center}
-.cat-add-btn{padding:8px 14px;background:var(--accent);color:#fff;border:none;border-radius:var(--rs);font-size:13px;cursor:pointer;white-space:nowrap;font-family:'DM Sans',sans-serif;flex-shrink:0}
-.cat-add-btn:hover{opacity:.85}
-
-/* FILTERS */
-.tx-filters{padding:0 20px;display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px}
-.fchip{font-size:12px;padding:5px 12px;border-radius:20px;border:1px solid var(--border2);background:transparent;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.15s;white-space:nowrap}
-.fchip:hover{background:var(--surface2)}
-.fchip.fa{background:var(--surface2);color:var(--text)}
-.fchip.fi{background:var(--income-bg);color:var(--income);border-color:var(--income)}
-.fchip.fe{background:var(--expense-bg);color:var(--expense);border-color:var(--expense)}
-.fchip.fc{background:var(--accent-bg);color:var(--accent);border-color:var(--accent)}
-
-/* TX LIST */
-.tx-list{padding:0 20px 20px}
-.tx-item{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border);animation:fadeIn .25s ease}
-.tx-item:last-child{border-bottom:none}
-@keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
-.tx-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
-.tx-icon.income{background:var(--income-bg)}.tx-icon.expense{background:var
+// ── INIT ROBUSTO ──────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    try {
+        const M=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'],d=new Date();
+        const curMonthEl = document.getElementById('currentMonth');
+        if(curMonthEl) curMonthEl.textContent = `${M[d.getMonth()]} ${d.getFullYear()}`;
+        
+        const fDateEl = document.getElementById('fDate');
+        if(fDateEl) fDateEl.value = new Date().toISOString().split('T')[0];
+        
+        populateCatSelect('fCategory');
+        renderCatManager();
+        renderTx();
+        renderCatFilters();
+        updateBalance();
+        renderCalendar();
+        renderNotif();
+        setInterval(renderNotif, 60000);
+    } catch (err) {
+        console.error("Erro fatal na inicialização:", err);
+    }
+});
+</script>
+</body>
+</html>
