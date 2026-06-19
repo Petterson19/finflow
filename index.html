@@ -233,6 +233,7 @@ select option{background:var(--surface2)}
   </div>
 </header>
 
+<!-- NOTIF PANEL -->
 <div class="notif-overlay" id="notifOverlay">
   <div class="notif-panel" id="notifPanel">
     <div class="notif-title">🔔 Notificações</div>
@@ -240,6 +241,7 @@ select option{background:var(--surface2)}
   </div>
 </div>
 
+<!-- EDIT MODAL -->
 <div class="overlay" id="editOverlay">
   <div class="modal">
     <div class="modal-title">✏️ Editar lançamento<button class="modal-close" onclick="closeEdit()">×</button></div>
@@ -271,8 +273,10 @@ select option{background:var(--surface2)}
 
   <div class="main-grid">
 
+    <!-- LEFT COLUMN -->
     <div style="display:flex;flex-direction:column;gap:20px">
 
+      <!-- TRANSACTIONS -->
       <div class="panel">
         <div class="panel-header">
           <div class="panel-title">Lançamentos</div>
@@ -285,6 +289,7 @@ select option{background:var(--surface2)}
           </div>
         </div>
 
+        <!-- NAVEGAÇÃO POR PERÍODO ATUALIZADA -->
         <div class="period-nav">
           <button class="period-btn" onclick="periodMove(-1)">‹</button>
           <select class="period-select" id="periodSelect" onchange="periodSelectChange(this)"></select>
@@ -297,6 +302,7 @@ select option{background:var(--surface2)}
           <div class="psum balance"><div class="psum-label">Saldo</div><div class="psum-val" id="psumBal">R$ 0,00</div></div>
         </div>
 
+        <!-- LIST VIEW -->
         <div id="txListView">
           <div class="tx-filters" id="typeFilters">
             <button class="fchip fa" onclick="setTypeFilter('all',this)">Todos</button>
@@ -309,6 +315,7 @@ select option{background:var(--surface2)}
           </div>
         </div>
 
+        <!-- PIE VIEW -->
         <div id="txPieView" style="display:none">
           <div class="chart-wrap">
             <div class="chart-tabs">
@@ -325,8 +332,10 @@ select option{background:var(--surface2)}
 
     </div>
 
+    <!-- RIGHT COLUMN -->
     <div style="display:flex;flex-direction:column;gap:20px">
 
+      <!-- FORM -->
       <div class="panel">
         <div class="panel-header"><div class="panel-title">Novo lançamento</div></div>
         <div class="form-body">
@@ -368,6 +377,7 @@ select option{background:var(--surface2)}
         </div>
       </div>
 
+      <!-- BILLS CALENDAR -->
       <div class="panel">
         <div class="panel-header">
           <div class="panel-title">Contas a pagar</div>
@@ -471,24 +481,9 @@ function setPeriodAll(){
 }
 
 function getFilteredData() {
-  // Converte as contas a pagar para o formato de lançamentos
-  const billsAsTx = bills.map(b => ({
-    id: b.id,
-    isBill: true, 
-    desc: b.desc,
-    amount: b.amount,
-    type: 'expense', 
-    date: b.dueDate,
-    cat: b.cat
-  }));
-  
-  // Junta lançamentos reais + contas a pagar e ordena por data
-  let allData = [...transactions, ...billsAsTx];
-  allData.sort((a, b) => b.date.localeCompare(a.date));
-
-  if (isPeriodAll) return allData;
+  if (isPeriodAll) return transactions;
   const prefix = `${pYear}-${String(pMonth+1).padStart(2,'0')}`;
-  return allData.filter(t => t.date.startsWith(prefix));
+  return transactions.filter(t => t.date.startsWith(prefix));
 }
 
 function updatePeriodUI(){
@@ -558,69 +553,25 @@ function saveOutroCategory(){
 
 // ── ADD ──────────────────────────────────────────────────────────────
 function addEntry(){
-  const desc = document.getElementById('fDesc').value.trim();
-  const amount = parseFloat(document.getElementById('fAmount').value);
-  const date = document.getElementById('fDate').value;
-  const cat = document.getElementById('fCategory').value;
-  
-  if(!desc){ showToast('⚠️ Preencha a descrição'); return; }
-  if(!amount || amount <= 0){ showToast('⚠️ Valor inválido'); return; }
-  if(!date){ showToast('⚠️ Selecione uma data'); return; }
-  
-  if(currentTab === 'bill'){
-    const repeat = document.getElementById('fRepeat').value;
-    const [y, m, d] = date.split('-').map(Number);
-    
-    if (repeat === 'monthly') {
-      // Gera a conta para o mês selecionado e para os próximos 23 meses (total de 2 anos)
-      for (let i = 0; i < 24; i++) {
-        let nd = new Date(y, m - 1 + i, d);
-        
-        // Validação de edge case: evita que meses curtos empurrem a data para o mês seguinte
-        if (nd.getDate() !== d) {
-          nd = new Date(y, m - 1 + i + 1, 0); // Volta para o último dia do mês pretendido
-        }
-        
-        const nY = nd.getFullYear();
-        const nM = String(nd.getMonth() + 1).padStart(2, '0');
-        const nD = String(nd.getDate()).padStart(2, '0');
-        
-        bills.push({
-          id: Date.now() + i, // Soma 'i' para garantir que os IDs não colidam durante o loop
-          desc: desc,
-          amount: amount,
-          dueDate: `${nY}-${nM}-${nD}`,
-          cat: cat,
-          repeat: 'monthly'
-        });
-      }
-    } else {
-      // Cadastro de conta única (sem recorrência)
-      bills.push({id: Date.now(), desc, amount, dueDate: date, cat, repeat});
-    }
-    
-    save();
-    renderCalendar();
-    renderNotif();
-    updateBalance();
-    renderTx();         
-    renderCatFilters(); 
+  const desc=document.getElementById('fDesc').value.trim();
+  const amount=parseFloat(document.getElementById('fAmount').value);
+  const date=document.getElementById('fDate').value;
+  const cat=document.getElementById('fCategory').value;
+  if(!desc){showToast('⚠️ Preencha a descrição');return;}
+  if(!amount||amount<=0){showToast('⚠️ Valor inválido');return;}
+  if(!date){showToast('⚠️ Selecione uma data');return;}
+  if(currentTab==='bill'){
+    bills.push({id:Date.now(),desc,amount,dueDate:date,cat,repeat:document.getElementById('fRepeat').value});
+    save();renderCalendar();renderNotif();updateBalance();
     showToast('✅ Conta cadastrada!');
-    
   } else {
-    // Processamento normal para Receitas e Despesas
-    transactions.unshift({id: Date.now(), desc, amount, type: currentTab, date, cat});
-    save();
-    renderTx();
-    updateBalance();
-    renderCatFilters();
-    showToast(currentTab === 'income' ? '✅ Receita adicionada!' : '✅ Despesa adicionada!');
+    transactions.unshift({id:Date.now(),desc,amount,type:currentTab,date,cat});
+    save();renderTx();updateBalance();renderCatFilters();
+    showToast(currentTab==='income'?'✅ Receita adicionada!':'✅ Despesa adicionada!');
   }
-  
-  // Limpa os campos após salvar
-  document.getElementById('fDesc').value = '';
-  document.getElementById('fAmount').value = '';
-  document.getElementById('fDate').value = '';
+  document.getElementById('fDesc').value='';
+  document.getElementById('fAmount').value='';
+  document.getElementById('fDate').value='';
 }
 
 // ── TX VIEW TOGGLE ────────────────────────────────────────────────────
@@ -660,7 +611,6 @@ function renderTx(){
   const list=document.getElementById('txList');
   let baseData = getFilteredData(); 
 
-  // O sumário do mês agora inclui automaticamente as contas a pagar
   if(!isPeriodAll) {
     const mInc = baseData.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
     const mExp = baseData.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
@@ -675,26 +625,21 @@ function renderTx(){
   
   document.getElementById('txCount').textContent=data.length+' lançamento'+(data.length!==1?'s':'');
   if(!data.length){list.innerHTML='<div class="empty"><div>💸</div>Nenhum lançamento</div>';if(txView==='pie')renderPie();return;}
-  
   list.innerHTML=data.map(t=>{
     const c=catById(t.cat);
-    return`<div class="tx-item" style="${t.isBill ? 'opacity: 0.85;' : ''}">
+    return`<div class="tx-item">
       <div class="tx-icon ${t.type}">${c.emoji}</div>
       <div class="tx-info">
-        <div class="tx-name">${t.isBill ? '📅 ' : ''}${t.desc}</div>
-        <div class="tx-meta">${fmtDate(t.date)} · ${c.label} ${t.isBill ? '<span style="color:var(--warn)"> (A pagar)</span>' : ''}</div>
+        <div class="tx-name">${t.desc}</div>
+        <div class="tx-meta">${fmtDate(t.date)} · ${c.label}</div>
       </div>
       <div class="tx-amount ${t.type}">${t.type==='income'?'+':'-'} ${fmt(t.amount)}</div>
       <div class="tx-actions">
-        ${t.isBill 
-          ? `<button class="act-btn del" onclick="deleteBill(${t.id})" title="Remover Conta">✕</button>`
-          : `<button class="act-btn edit" onclick="openEdit(${t.id})" title="Editar">✏️</button>
-             <button class="act-btn del" onclick="deleteTx(${t.id})" title="Remover">✕</button>`
-        }
+        <button class="act-btn edit" onclick="openEdit(${t.id})" title="Editar">✏️</button>
+        <button class="act-btn del"  onclick="deleteTx(${t.id})" title="Remover">✕</button>
       </div>
     </div>`;
   }).join('');
-  
   if(txView==='pie') renderPie();
 }
 
@@ -882,11 +827,7 @@ function deleteBill(id){
     if(!remaining.length){selectedDay=null;document.getElementById('dayDetail').innerHTML='';}
     else selectDay(selectedDay);
   }
-  renderCalendar();
-  renderNotif();
-  updateBalance();
-  renderTx();         
-  renderCatFilters(); 
+  renderCalendar();renderNotif();updateBalance();
   showToast('🗑️ Conta removida');
 }
 
@@ -902,7 +843,7 @@ function renderNotif(){
     const days=getDaysUntil(b.dueDate),urg=days<=0?'urgent':'warn';
     const msg=days<0?`Venceu há ${Math.abs(days)} dia${Math.abs(days)!==1?'s':''}. Regularize o quanto antes!`:
               days===0?`Vence hoje! Valor: ${fmt(b.amount)}.`:
-              `Vence em ${days} dia${days!==1?'s'} (${fmtDate(b.dueDate)}). Reserve ${fmt(b.amount)}.`;
+              `Vence em ${days} dia${days!==1?'s':''} (${fmtDate(b.dueDate)}). Reserve ${fmt(b.amount)}.`;
     const c=catById(b.cat);
     return`<div class="notif-item ${urg}"><div class="ni-title">${c.emoji} ${b.desc}</div><div class="ni-body">${msg}</div></div>`;
   }).join('');
