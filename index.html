@@ -125,7 +125,9 @@ select option{background:var(--surface2)}
 .period-nav{display:flex;align-items:center;gap:6px;padding:0 20px 14px}
 .period-btn{background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:var(--rs);width:28px;height:28px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:background .15s;flex-shrink:0}
 .period-btn:hover{background:var(--surface3)}
-.period-label{font-size:13px;font-weight:500;font-family:'DM Mono',monospace;color:var(--text);min-width:110px;text-align:center}
+.period-select {background:transparent;color:var(--text);border:none;font-family:inherit;font-size:0.95rem;font-weight:500;text-align:center;cursor:pointer;outline:none;padding:6px 12px;border-radius:6px;transition:background 0.2s;-webkit-appearance:none;-moz-appearance:none;appearance:none;}
+.period-select:hover {background:var(--surface3);}
+.period-select option {background:var(--surface2);color:var(--text);}
 .period-all-btn{font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--border2);background:transparent;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;white-space:nowrap}
 .period-all-btn:hover{background:var(--surface2);color:var(--text)}
 .period-all-btn.active{background:var(--accent-bg);color:var(--accent);border-color:var(--accent)}
@@ -287,6 +289,19 @@ select option{background:var(--surface2)}
           </div>
         </div>
 
+        <!-- NAVEGAÇÃO POR PERÍODO ATUALIZADA -->
+        <div class="period-nav">
+          <button class="period-btn" onclick="periodMove(-1)">‹</button>
+          <select class="period-select" id="periodSelect" onchange="periodSelectChange(this)"></select>
+          <button class="period-btn" onclick="periodMove(+1)">›</button>
+          <button class="period-all-btn active" id="periodAllBtn" onclick="setPeriodAll()">Todos</button>
+        </div>
+        <div class="period-summary" id="periodSummary" style="display:none;">
+          <div class="psum income"><div class="psum-label">Receitas</div><div class="psum-val" id="psumInc">R$ 0,00</div></div>
+          <div class="psum expense"><div class="psum-label">Despesas</div><div class="psum-val" id="psumExp">R$ 0,00</div></div>
+          <div class="psum balance"><div class="psum-label">Saldo</div><div class="psum-val" id="psumBal">R$ 0,00</div></div>
+        </div>
+
         <!-- LIST VIEW -->
         <div id="txListView">
           <div class="tx-filters" id="typeFilters">
@@ -294,17 +309,7 @@ select option{background:var(--surface2)}
             <button class="fchip" onclick="setTypeFilter('income',this)">↑ Receitas</button>
             <button class="fchip" onclick="setTypeFilter('expense',this)">↓ Despesas</button>
           </div>
-          
-<div class="tx-filters" style="padding-top:8px">
-  <select id="periodFilter" onchange="renderTx();updateBalance();renderPie();" style="max-width:220px">
-    <option value="all">Todo período</option>
-    <option value="month">Mês atual</option>
-    <option value="lastMonth">Mês anterior</option>
-    <option value="year">Ano atual</option>
-  </select>
-</div>
-
-<div class="tx-filters" id="catFilters" style="padding-top:8px;padding-bottom:12px"></div>
+          <div class="tx-filters" id="catFilters" style="padding-top:8px;padding-bottom:12px"></div>
           <div class="tx-list">
             <div id="txList"><div class="empty"><div>💸</div>Nenhum lançamento ainda</div></div>
           </div>
@@ -433,6 +438,73 @@ let currentTab='income', typeFilter='all', catFilter='all', chartType='expense',
 const now = new Date();
 let calYear=now.getFullYear(), calMonth=now.getMonth(), selectedDay=null;
 
+// Variáveis para o filtro de período
+let pYear = now.getFullYear(), pMonth = now.getMonth(), isPeriodAll = true;
+const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const DOWS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
+// ── PERIOD FILTERS ────────────────────────────────────────────────────
+function populatePeriodSelect() {
+  const select = document.getElementById('periodSelect');
+  if (!select || select.options.length > 0) return; 
+
+  const currentYear = new Date().getFullYear();
+  let html = '';
+  
+  for (let year = currentYear - 1; year <= currentYear + 2; year++) {
+    for (let month = 0; month < 12; month++) {
+      html += `<option value="${year}-${month}">${MONTHS[month]} ${year}</option>`;
+    }
+  }
+  select.innerHTML = html;
+}
+
+function periodSelectChange(el) {
+  const [year, month] = el.value.split('-').map(Number);
+  pYear = year;
+  pMonth = month;
+  isPeriodAll = false;
+  updatePeriodUI();
+}
+
+function periodMove(dir){
+  isPeriodAll = false;
+  pMonth += dir;
+  if(pMonth > 11) { pMonth = 0; pYear++; }
+  if(pMonth < 0) { pMonth = 11; pYear--; }
+  updatePeriodUI();
+}
+
+function setPeriodAll(){
+  isPeriodAll = true;
+  updatePeriodUI();
+}
+
+function getFilteredData() {
+  if (isPeriodAll) return transactions;
+  const prefix = `${pYear}-${String(pMonth+1).padStart(2,'0')}`;
+  return transactions.filter(t => t.date.startsWith(prefix));
+}
+
+function updatePeriodUI(){
+  populatePeriodSelect();
+  const select = document.getElementById('periodSelect');
+  const btnAll = document.getElementById('periodAllBtn');
+  const sumDiv = document.getElementById('periodSummary');
+
+  if(isPeriodAll){
+    btnAll.classList.add('active');
+    sumDiv.style.display = 'none';
+  } else {
+    if(select) select.value = `${pYear}-${pMonth}`;
+    btnAll.classList.remove('active');
+    sumDiv.style.display = 'flex';
+  }
+  
+  renderCatFilters();
+  renderTx();
+}
+
 // ── TAB ──────────────────────────────────────────────────────────────
 function setTab(tab,btn){
   currentTab=tab;
@@ -527,48 +599,30 @@ function setCatFilter(f,btn){
 }
 function renderCatFilters(){
   const el=document.getElementById('catFilters');
-  let pool=typeFilter==='all'?transactions:transactions.filter(t=>t.type===typeFilter);
+  let pool=typeFilter==='all'?getFilteredData():getFilteredData().filter(t=>t.type===typeFilter);
   const used=[...new Set(pool.map(t=>t.cat))];
   if(used.length<2){el.innerHTML='';return;}
   el.innerHTML=`<button class="fchip ${catFilter==='all'?'fa':''}" onclick="setCatFilter('all',this)">Todas</button>`
     +used.map(id=>{const c=catById(id);return`<button class="fchip ${catFilter===id?'fc':''}" onclick="setCatFilter('${id}',this)">${c.emoji} ${c.label}</button>`;}).join('');
 }
 
-
-function getFilteredTransactions(){
-  const sel=document.getElementById('periodFilter');
-  const period=sel?sel.value:'all';
-  const now=new Date();
-
-  return transactions.filter(t=>{
-    const d=new Date(t.date);
-
-    switch(period){
-      case 'month':
-        return d.getMonth()===now.getMonth() &&
-               d.getFullYear()===now.getFullYear();
-
-      case 'lastMonth':
-        const last=new Date(now.getFullYear(),now.getMonth()-1,1);
-        return d.getMonth()===last.getMonth() &&
-               d.getFullYear()===last.getFullYear();
-
-      case 'year':
-        return d.getFullYear()===now.getFullYear();
-
-      default:
-        return true;
-    }
-  });
-}
-
-
 // ── RENDER TX ─────────────────────────────────────────────────────────
 function renderTx(){
   const list=document.getElementById('txList');
-  let data=getFilteredTransactions();
+  let baseData = getFilteredData(); 
+
+  if(!isPeriodAll) {
+    const mInc = baseData.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+    const mExp = baseData.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    document.getElementById('psumInc').textContent = fmt(mInc);
+    document.getElementById('psumExp').textContent = fmt(mExp);
+    document.getElementById('psumBal').textContent = fmt(mInc - mExp);
+  }
+
+  let data = [...baseData];
   if(typeFilter!=='all') data=data.filter(t=>t.type===typeFilter);
   if(catFilter!=='all')  data=data.filter(t=>t.cat===catFilter);
+  
   document.getElementById('txCount').textContent=data.length+' lançamento'+(data.length!==1?'s':'');
   if(!data.length){list.innerHTML='<div class="empty"><div>💸</div>Nenhum lançamento</div>';if(txView==='pie')renderPie();return;}
   list.innerHTML=data.map(t=>{
@@ -632,7 +686,7 @@ function setChartType(type,btn){
 function renderPie(){
   const svg=document.getElementById('pieSvg'),leg=document.getElementById('pieLegend');
   if(!svg)return;
-  const data=transactions.filter(t=>t.type===chartType);
+  const data=getFilteredData().filter(t=>t.type===chartType);
   if(!data.length){
     svg.innerHTML='<circle cx="80" cy="80" r="62" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="28"/>';
     leg.innerHTML='<div style="color:var(--hint);font-size:13px">Sem dados para exibir</div>';return;
@@ -662,9 +716,8 @@ function renderPie(){
 
 // ── BALANCE ───────────────────────────────────────────────────────────
 function updateBalance(){
-  const filtered=getFilteredTransactions();
-  const income=filtered.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
-  const expense=filtered.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const income=transactions.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const expense=transactions.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
   const balance=income-expense;
   const pending=bills.filter(b=>getDaysUntil(b.dueDate)>=0).reduce((s,b)=>s+b.amount,0);
   const proj=balance-pending;
@@ -680,9 +733,6 @@ function updateBalance(){
 }
 
 // ── CALENDAR ─────────────────────────────────────────────────────────
-const MONTHS=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-const DOWS=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-
 function calMove(dir){
   calMonth+=dir;
   if(calMonth>11){calMonth=0;calYear++;}
@@ -696,7 +746,6 @@ function renderCalendar(){
   document.getElementById('billCount').textContent=`${bills.length} conta${bills.length!==1?'s':''}`;
   document.getElementById('calLabel').textContent=`${MONTHS[calMonth]} ${calYear}`;
 
-  // Map bills to their due dates this month
   const billsByDay={};
   bills.forEach(b=>{
     const[y,m,d]=b.dueDate.split('-').map(Number);
@@ -713,7 +762,6 @@ function renderCalendar(){
 
   let html=DOWS.map(d=>`<div class="cal-dow">${d}</div>`).join('');
 
-  // Padding before month start
   const prevDays=new Date(calYear,calMonth,0).getDate();
   for(let i=firstDay-1;i>=0;i--){
     html+=`<div class="cal-day other"><span class="cal-num">${prevDays-i}</span></div>`;
@@ -726,7 +774,6 @@ function renderCalendar(){
     const ds=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const isSel=selectedDay===ds;
 
-    // Urgency of dots
     const dots=dayBills.map(b=>{
       const days=getDaysUntil(b.dueDate);
       const urg=days<0?'urgent':days<=7?'warn':'ok';
@@ -739,7 +786,6 @@ function renderCalendar(){
     </div>`;
   }
 
-  // Padding after
   const total=firstDay+daysInMonth;
   const trailing=(7-total%7)%7;
   for(let d=1;d<=trailing;d++){
@@ -776,7 +822,6 @@ function selectDay(ds){
 function deleteBill(id){
   bills=bills.filter(b=>b.id!==id);
   save();
-  // If selected day now has no bills, clear it
   if(selectedDay){
     const remaining=bills.filter(b=>b.dueDate===selectedDay);
     if(!remaining.length){selectedDay=null;document.getElementById('dayDetail').innerHTML='';}
@@ -862,7 +907,7 @@ function importData(e){
       if(!confirm(`Importar backup de ${ds}?\n\nIsso vai substituir todos os dados atuais.`))return;
       transactions=data.transactions||[];bills=data.bills||[];customCats=data.customCats||[];
       save();populateCatSelect('fCategory');renderCatManager();
-      renderTx();renderCatFilters();updateBalance();renderCalendar();renderNotif();
+      updatePeriodUI(); updateBalance();renderCalendar();renderNotif();
       showToast('✅ Dados importados!');
     }catch(err){showToast('⚠️ Erro ao ler o arquivo');}
     e.target.value='';
@@ -875,13 +920,19 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 
 // ── INIT ──────────────────────────────────────────────────────────────
 (function(){
-  const M=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'],d=new Date();
-  document.getElementById('currentMonth').textContent=`${M[d.getMonth()]} ${d.getFullYear()}`;
+  const d=new Date();
+  const shortMonths=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  document.getElementById('currentMonth').textContent=`${shortMonths[d.getMonth()]} ${d.getFullYear()}`;
   document.getElementById('fDate').value=today();
+  
   populateCatSelect('fCategory');
   renderCatManager();
-  renderTx();renderCatFilters();
-  updateBalance();renderCalendar();renderNotif();
+  
+  updatePeriodUI();
+  updateBalance();
+  renderCalendar();
+  renderNotif();
+  
   setInterval(renderNotif,60000);
 })();
 </script>
