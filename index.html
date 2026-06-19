@@ -635,36 +635,63 @@ function renderCatFilters(){
 }
 
 // ── RENDER TX ─────────────────────────────────────────────────────────
-function renderTx(){
-  const list=document.getElementById('txList');
-  let baseData = getFilteredData(); 
+function renderTx() {
+  const list = document.getElementById('txList');
+  
+  // 1. Criamos um array combinado de transações e contas
+  // Convertendo contas para o formato de transação para facilitar a listagem
+  const billAsTx = bills.map(b => ({
+    id: b.id,
+    desc: `[Conta] ${b.desc}`,
+    amount: b.amount,
+    type: 'expense',
+    date: b.dueDate,
+    cat: b.cat,
+    isBill: true
+  }));
 
-  if(!isPeriodAll) {
-    const mInc = baseData.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
-    const mExp = baseData.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  let baseData = [...getFilteredData(), ...billAsTx];
+
+  // 2. Filtro de período (ajustado para considerar a data da conta)
+  if (!isPeriodAll) {
+    const prefix = `${pYear}-${String(pMonth + 1).padStart(2, '0')}`;
+    baseData = baseData.filter(t => t.date.startsWith(prefix));
+    
+    // Atualiza os resumos
+    const mInc = baseData.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+    const mExp = baseData.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
     document.getElementById('psumInc').textContent = fmt(mInc);
     document.getElementById('psumExp').textContent = fmt(mExp);
     document.getElementById('psumBal').textContent = fmt(mInc - mExp);
   }
 
+  // 3. Aplica filtros de tipo e categoria
   let data = [...baseData];
-  if(typeFilter!=='all') data=data.filter(t=>t.type===typeFilter);
-  if(catFilter!=='all')  data=data.filter(t=>t.cat===catFilter);
+  if (typeFilter !== 'all') data = data.filter(t => t.type === typeFilter);
+  if (catFilter !== 'all')  data = data.filter(t => t.cat === catFilter);
   
-  document.getElementById('txCount').textContent=data.length+' lançamento'+(data.length!==1?'s':'');
-  if(!data.length){list.innerHTML='<div class="empty"><div>💸</div>Nenhum lançamento</div>';if(txView==='pie')renderPie();return;}
-  list.innerHTML=data.map(t=>{
-    const c=catById(t.cat);
-    return`<div class="tx-item">
+  // Ordena por data
+  data.sort((a,b) => new Date(b.date) - new Date(a.date));
+
+  document.getElementById('txCount').textContent = data.length + ' item(ns)';
+  
+  if (!data.length) {
+    list.innerHTML = '<div class="empty"><div>💸</div>Nenhum registro encontrado</div>';
+    return;
+  }
+
+  list.innerHTML = data.map(t => {
+    const c = catById(t.cat);
+    return `<div class="tx-item">
       <div class="tx-icon ${t.type}">${c.emoji}</div>
       <div class="tx-info">
         <div class="tx-name">${t.desc}</div>
         <div class="tx-meta">${fmtDate(t.date)} · ${c.label}</div>
       </div>
-      <div class="tx-amount ${t.type}">${t.type==='income'?'+':'-'} ${fmt(t.amount)}</div>
+      <div class="tx-amount ${t.type}">${t.type === 'income' ? '+' : '-'} ${fmt(t.amount)}</div>
       <div class="tx-actions">
-        <button class="act-btn edit" onclick="openEdit(${t.id})" title="Editar">✏️</button>
-        <button class="act-btn del"  onclick="deleteTx(${t.id})" title="Remover">✕</button>
+        ${!t.isBill ? `<button class="act-btn edit" onclick="openEdit(${t.id})" title="Editar">✏️</button>` : ''}
+        <button class="act-btn del" onclick="${t.isBill ? `deleteBill(${t.id})` : `deleteTx(${t.id})`}" title="Remover">✕</button>
       </div>
     </div>`;
   }).join('');
